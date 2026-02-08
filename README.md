@@ -1,9 +1,3 @@
-Done. Below is a **single, complete `README.md`** you can **copy-paste as-is**, save, preview locally, and push.
-It includes **clean sections**, **correct code fences**, and **Mermaid diagrams placed properly** (no broken Markdown).
-
----
-
-````markdown
 # Chronos
 
 Chronos is a backend system for ingesting and processing time-ordered telemetry data in environments where producers and consumers operate at different and unpredictable speeds.
@@ -188,6 +182,19 @@ Ingestion → Buffer → Worker → Storage
 
 ---
 
+## Simulation Behavior
+
+Chronos includes a deterministic producer–consumer simulation designed to demonstrate system behavior under load.
+
+In the simulation:
+- The producer intentionally generates events faster than the worker can process them.
+- The buffer absorbs bursty load without blocking ingestion.
+- The worker processes one event at a time, with explicit retry semantics on failure.
+- Storage persists only terminal success states and never mutates event state.
+
+This allows the system to degrade predictably by increasing latency and backlog, rather than silently dropping or corrupting data.
+
+
 ## Testing
 
 Chronos includes invariant-focused tests that enforce:
@@ -223,3 +230,6 @@ Chronos demonstrates how a small, disciplined system can:
 * Make strong guarantees
 * Fail predictably
 * Remain explainable under pressure
+
+**Status:** Chronos v1 is complete and frozen.  
+* Future work (durability, UDP ingestion, Redis buffering) will be explored in v2.
