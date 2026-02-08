@@ -10,6 +10,7 @@ class EventState(Enum):
     FAILED_RETRYABLE = auto()
     FAILED_TERMINAL = auto()    # terminal failure
 
+
 LEGAL_STATE_TRANSITIONS = {
     EventState.RECEIVED: {EventState.ACCEPTED},
     EventState.ACCEPTED: {EventState.BUFFERED},
@@ -18,14 +19,18 @@ LEGAL_STATE_TRANSITIONS = {
         EventState.PROCESSED,
         EventState.FAILED_RETRYABLE,
     },
-    EventState.FAILED_RETRYABLE: {EventState.PROCESSING},
-    EventState.PROCESSED: set(),         # terminal
-    EventState.FAILED_TERMINAL: set(),    # terminal
+    EventState.FAILED_RETRYABLE: {
+        EventState.PROCESSING,
+        EventState.FAILED_TERMINAL,   # ✅ THIS WAS MISSING
+    },
+    EventState.PROCESSED: set(),
+    EventState.FAILED_TERMINAL: set(),
 }
 
+
 def is_valid_transition(from_state: EventState, to_state: EventState) -> bool:
-    allowed = LEGAL_STATE_TRANSITIONS.get(from_state, set())
-    return to_state in allowed
+    return to_state in LEGAL_STATE_TRANSITIONS.get(from_state, set())
+
 
 def validate_transition(from_state: EventState, to_state: EventState) -> None:
     if not is_valid_transition(from_state, to_state):

@@ -24,7 +24,23 @@ class Worker:
                 f"Worker can only process BUFFERED events, got {event.state.name}"
             )
 
-        # Worker owns this transition
+        self._process_event(event)
+        return event
+
+    def _process_event(self, event: Event) -> None:
+        # ===== First attempt =====
+        event.transition_to(EventState.PROCESSING)
+
+        try:
+            self._processor(event)
+            event.transition_to(EventState.PROCESSED)
+            return
+
+        except Exception as exc:
+            # First failure → retryable
+            event.mark_failed(reason=str(exc), terminal=False)
+
+        # ===== Retry attempt =====
         event.transition_to(EventState.PROCESSING)
 
         try:
@@ -32,15 +48,8 @@ class Worker:
             event.transition_to(EventState.PROCESSED)
 
         except Exception as exc:
-            event.mark_failed(
-                reason=str(exc),
-                terminal=False,
-            )
+            # Second failure → retryable again
+            event.mark_failed(reason=str(exc), terminal=False)
 
-            # Explicit retry path:
-            # FAILED_RETRYABLE → ACCEPTED → BUFFERED
-            event.transition_to(EventState.ACCEPTED)
-            self._buffer.enqueue(event)
-
-
-        return event
+            # Explicit escalation (RFC rule)
+            event.transition_to(EventState.FAILED_TERMINAL)
