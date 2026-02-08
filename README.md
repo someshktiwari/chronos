@@ -221,6 +221,16 @@ The goal is to deeply understand:
 * Failure handling under load
 * Tradeoffs between throughput, latency, and reliability
 
+## Failure & Recovery Demonstration
+
+Below is a sample run showing Chronos behavior under partial failures:
+
+- Some events are retried
+- Some events fail terminally
+- No accepted event is silently lost
+
+![Chronos Failure Demo](screenshots/simulation.png)
+
 ---
 
 ## Summary
