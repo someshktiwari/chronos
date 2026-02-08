@@ -1,3 +1,6 @@
+import time
+import random
+
 from app.ingestion import ingest_event
 from app.buffer import EventBuffer
 from app.worker import Worker
@@ -7,10 +10,16 @@ from app.states import EventState
 
 
 def example_processor(event: Event) -> None:
-    # Simulated processing logic
-    # Real systems would transform / validate / enrich data here
-    if not event.payload:
-        raise ValueError("Invalid payload")
+    """
+    Simulated processing logic.
+    Intentionally slow and occasionally failing
+    to demonstrate buffering and retries.
+    """
+    time.sleep(0.3)
+
+    if random.random() < 0.2:
+        raise ValueError("Simulated processing failure")
+
 
 def main():
     buffer = EventBuffer()
@@ -18,29 +27,42 @@ def main():
 
     worker = Worker(
         buffer=buffer,
-        processor=example_processor
+        processor=example_processor,
     )
 
+    print("Starting Chronos simulation...\n")
 
-    # Ingest event (acceptance boundary)
-    event = ingest_event(
-        producer_timestamp=1234567890.0,
-        payload={"speed": 320, "rpm": 12000}
-    )
+    # Producer loop (fast)
+    for i in range(10):
+        event = ingest_event(
+            producer_timestamp=time.time(),
+            payload={"event_number": i, "speed": random.randint(200, 350)},
+        )
 
-    # Buffer the accepted event
-    buffer.enqueue(event)
+        buffer.enqueue(event)
+        print(f"[PRODUCER] Ingested event {event.event_id} (state={event.state.name})")
 
-    # Process one event
-    worker.process_once()
+        time.sleep(0.05)
 
-    # Persist only if processed
-    if event.state == EventState.PROCESSED:
-        storage.persist(event)
+    print("\n--- Processing loop starts ---\n")
 
-    # Verify outcome
-    print("Final event state:", event.state)
-    print("Stored events:", storage.all_events())
+    # Consumer loop (slow)
+    while buffer.size() > 0:
+        event = worker.process_once()
+
+        if event and event.state == EventState.PROCESSED:
+            storage.persist(event)
+            print(f"[STORAGE] Persisted event {event.event_id}")
+
+        print(
+            f"[STATUS] Buffer size={buffer.size()} | "
+            f"Stored={len(storage.all_events())}"
+        )
+
+        time.sleep(0.1)
+
+    print("\nSimulation complete.")
+    print(f"Total persisted events: {len(storage.all_events())}")
 
 
 if __name__ == "__main__":
